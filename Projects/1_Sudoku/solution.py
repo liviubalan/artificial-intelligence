@@ -1,5 +1,6 @@
 
 from utils import *
+import copy
 
 
 row_units = [cross(r, cols) for r in rows]
@@ -8,8 +9,10 @@ square_units = [cross(rs, cs) for rs in ('ABC','DEF','GHI') for cs in ('123','45
 unitlist = row_units + column_units + square_units
 
 # TODO: Update the unit list to add the new diagonal units
-unitlist = unitlist
-
+diagonal1 = [x + y for x, y in zip(rows, cols)]
+diagonal2 = [x + y for x, y in zip(rows, cols[::-1])]
+diag_units = [diagonal1, diagonal2]
+unitlist += diag_units
 
 # Must be called after all units (including diagonals) are added to the unitlist
 units = extract_units(unitlist, boxes)
@@ -54,7 +57,15 @@ def naked_twins(values):
     https://github.com/udacity/artificial-intelligence/blob/master/Projects/1_Sudoku/pseudocode.md
     """
     # TODO: Implement this function!
-    raise NotImplementedError
+    # raise NotImplementedError
+    out = copy.deepcopy(values)
+    for box1 in [box for box in values.keys() if len(values[box]) == 2]:
+        for box2 in [box for box in peers[box1] if len(values[box]) == 2]:
+            if values[box1] == values[box2]:
+                for peer in peers[box1].intersection(peers[box2]):
+                    for digit in values[box1]:
+                        out[peer] = out[peer].replace(digit, "")
+    return out
 
 
 def eliminate(values):
@@ -74,7 +85,13 @@ def eliminate(values):
         The values dictionary with the assigned values eliminated from peers
     """
     # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    # raise NotImplementedError
+    values_solved = [box for box in values.keys() if len(values[box]) == 1]
+    for box in values_solved:
+        digit = values[box]
+        for peer in peers[box]:
+            values[peer] = values[peer].replace(digit, "")
+    return values
 
 
 def only_choice(values):
@@ -98,7 +115,13 @@ def only_choice(values):
     You should be able to complete this function by copying your code from the classroom
     """
     # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    # raise NotImplementedError
+    for unit in unitlist:
+        for digit in "123456789":
+            places = [box for box in unit if digit in values[box]]
+            if len(places) == 1:
+                values[places[0]] = digit
+    return values
 
 
 def reduce_puzzle(values):
@@ -116,7 +139,18 @@ def reduce_puzzle(values):
         no longer produces any changes, or False if the puzzle is unsolvable 
     """
     # TODO: Copy your code from the classroom and modify it to complete this function
-    raise NotImplementedError
+    # raise NotImplementedError
+    stalled = False
+    while not stalled:
+        values_solved_before = len([box for box in values.keys() if len(values[box]) == 1])
+        values = naked_twins(values)
+        values = eliminate(values)
+        values = only_choice(values)
+        solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
+        stalled = values_solved_before == solved_values_after
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 
 def search(values):
@@ -139,7 +173,19 @@ def search(values):
     and extending it to call the naked twins strategy.
     """
     # TODO: Copy your code from the classroom to complete this function
-    raise NotImplementedError
+    # raise NotImplementedError
+    values = reduce_puzzle(values)
+    if values is False:
+        return False
+    if all(len(values[s]) == 1 for s in boxes):
+        return values
+    n, s = min((len(values[s]), s) for s in boxes if len(values[s]) > 1)
+    for value in values[s]:
+        new_sudoku = values.copy()
+        new_sudoku[s] = value
+        attempt = search(new_sudoku)
+        if attempt:
+            return attempt
 
 
 def solve(grid):
